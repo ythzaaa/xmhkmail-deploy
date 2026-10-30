@@ -4,7 +4,7 @@
 
 ## 安装、更新与卸载
 
-在已安装 Docker Engine、稳定 Compose 插件、curl 和 openssl 的 Linux amd64 主机执行：
+在装有 curl 的 Linux amd64 主机执行。服务器没有 Docker 时，安装会显示 Docker 官方 apt 源与签名密钥指纹，确认后自动安装 Docker Engine 和 Compose 插件；已有 Docker 不会被升级或改动：
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/ythzaaa/xmhkmail-deploy/main/xmhkmail.sh | sudo bash
@@ -24,7 +24,7 @@ curl -fsSL https://raw.githubusercontent.com/ythzaaa/xmhkmail-deploy/main/xmhkma
 
 ## 当前版本
 
-本轮部署包为 `v0.1.0-rc.6-r2`，app、mail、backup 三张镜像均为公开 rc.6，使用同版本固定 SHA256 摘要。确认更新目标显示 rc.6 后继续；历史版本保留。
+本轮部署包为 `v0.1.0-rc.6-r4`，app、mail、backup 三张镜像均为公开 rc.6，使用同版本固定 SHA256 摘要。确认更新目标显示 rc.6 后继续；历史版本保留。r4 只更新主机脚本：服务器完全没有 Docker 时，安装会显示官方 apt 源和签名密钥指纹，确认后安装 Docker；已有 Docker 不会被改动。已部署的服务器执行更新只会刷新脚本，不需要停机。
 
 rc.6 的邮箱域名选择列表在选择框下方弹出，可搜索、分页并在选中后收起。账号与域名列表有删除确认：账号从正常列表移除、撤销 Web 登录与应用密码，但保留邮件、草稿、联系人、地址和配额，同名地址不可重建；域名仅允许停用且无关联时删除，不级联清空数据。
 
@@ -34,4 +34,4 @@ rc.5 修复正常 Maildir 文件名导致升级备份验证失败的问题，并
 
 保留新账号默认禁发、Webmail 自动刷新，以及首次安装密码规则和恢复包下载。已有账号发信权限保留；新账号需要发信时在管理编辑页开启。主机工具自动准备备份密钥，已有密钥不会重新生成。rc.6 自动执行迁移 012；rc.3 升级也会执行已有迁移 011。迁移后旧 rc.5 或更早应用会拒绝新数据库，不能仅切旧镜像回退；保留原数据和备份，在独立空环境恢复。
 
-支持 Debian 12/13、Ubuntu 24.04/26.04 的 Linux amd64 宿主。不自动安装 Docker、修改 DNS/防火墙或探测公网 SMTP；容器健康不代表公网收发已经验收。详细说明随 Release 部署包提供。
+支持 Debian 12/13、Ubuntu 24.04/26.04 的 Linux amd64 宿主。无人值守安装且服务器没有 Docker 时须加 `--install-docker`。不修改 DNS/防火墙、不探测公网 SMTP；容器健康不代表公网收发已经验收。详细说明随 Release 部署包提供。

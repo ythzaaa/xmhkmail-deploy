@@ -9,6 +9,7 @@ deployment_directory=
 operation=menu
 confirmed=false
 install_arguments=()
+docker_installation_arguments=()
 while [ "$#" -gt 0 ]; do
   case "$1" in
     install | update | check | status | start | stop | backup | recovery | recover | uninstall | menu)
@@ -27,13 +28,18 @@ while [ "$#" -gt 0 ]; do
       confirmed=true
       shift
       ;;
+    --install-docker)
+      docker_installation_arguments=(--install-docker)
+      shift
+      ;;
     --hostname | --acme-email | --public-ip)
       install_arguments+=("$1" "${2:?Missing installation value}")
       shift 2
       ;;
     --help | -h)
       printf 'Usage: bash xmhkmail.sh [install|update|check|status|start|stop|backup|recovery|recover|uninstall]\n'
-      printf 'Options: --repository OWNER/REPOSITORY --directory PATH --yes\n'
+      printf 'Options: --repository OWNER/REPOSITORY --directory PATH --yes --install-docker\n'
+      printf 'Install asks before installing Docker on a host without it; --install-docker approves that for --yes.\n'
       printf 'Uninstall removes this deployment containers only; all data and keys remain.\n'
       exit 0
       ;;
@@ -47,16 +53,25 @@ if [ "$(id -u)" -ne 0 ]; then
   printf '请使用 root 或 sudo 运行。\n' >&2
   exit 1
 fi
-for program in docker curl tar sha256sum realpath flock; do
+for program in curl tar sha256sum realpath flock; do
   if ! command -v "$program" > /dev/null; then
-    printf '缺少 %s；请先安装 Docker Engine、Compose 插件和 curl。\n' "$program" >&2
+    printf '缺少 %s；请先安装 curl、tar、coreutils 和 util-linux。\n' "$program" >&2
     exit 1
   fi
 done
+# Without Docker there can be no running deployment; only installation, which
+# offers to install Docker after confirmation, can continue.
+docker_available=false
+if command -v docker > /dev/null; then
+  docker_available=true
+fi
 
 if [ -z "$deployment_directory" ]; then
-  container_ids=$(docker ps -a --filter label=com.docker.compose.project=xmhkmail \
-    --filter label=com.docker.compose.service=app --format '{{.ID}}')
+  container_ids=
+  if [ "$docker_available" = true ]; then
+    container_ids=$(docker ps -a --filter label=com.docker.compose.project=xmhkmail \
+      --filter label=com.docker.compose.service=app --format '{{.ID}}')
+  fi
   if [ "$(printf '%s\n' "$container_ids" | sed '/^$/d' | wc -l)" -gt 1 ]; then
     printf '检测到多个部署，请使用 --directory 指定目录。\n' >&2
     exit 1
@@ -135,6 +150,10 @@ if [ "$operation" = menu ]; then
       exit 1
       ;;
   esac
+fi
+if [ "$docker_available" != true ] && [ "$operation" != install ]; then
+  printf '未检测到 Docker；只能执行安装，安装时会询问是否安装 Docker。\n' >&2
+  exit 1
 fi
 
 confirmation_arguments=()
@@ -340,9 +359,11 @@ case "$operation" in
     case "$operation" in
       install)
         if [ -f "$deployment_directory/.env" ]; then
-          run_interactive_script "$deployment_directory/ops/install.sh" --resume "${confirmation_arguments[@]}"
+          run_interactive_script "$deployment_directory/ops/install.sh" --resume \
+            "${docker_installation_arguments[@]}" "${confirmation_arguments[@]}"
         else
-          run_interactive_script "$deployment_directory/ops/install.sh" "${install_arguments[@]}" "${confirmation_arguments[@]}"
+          run_interactive_script "$deployment_directory/ops/install.sh" "${install_arguments[@]}" \
+            "${docker_installation_arguments[@]}" "${confirmation_arguments[@]}"
         fi
         ;;
       update) run_interactive_script "$deployment_directory/ops/update.sh" apply "${confirmation_arguments[@]}" ;;
