@@ -262,6 +262,17 @@ fetch_package() {
   fi
 }
 
+configuration_templates_match() {
+  local installed_template=$1
+  local supplied_template=$2
+  if cmp -s "$installed_template" "$supplied_template"; then
+    return 0
+  fi
+  # A previous verified Windows-built package shipped CRLF templates. Ignore
+  # only the CR at line endings, not comments, whitespace or configuration.
+  cmp -s <(sed 's/\r$//' "$installed_template") <(sed 's/\r$//' "$supplied_template")
+}
+
 refresh_public_files() (
   if [ -f "$deployment_directory/.env" ]; then
     source "$deployment_directory/ops/lib/deployment.sh"
@@ -282,8 +293,9 @@ refresh_public_files() (
     fi
     case "$relative_file" in
       compose.yaml | compose.restore.yaml | ops/Caddyfile | ops/postgres/*)
-        if [ -e "$target_file" ] && ! cmp -s "$target_file" "$package_workspace/$relative_file"; then
+        if [ -e "$target_file" ] && ! configuration_templates_match "$target_file" "$package_workspace/$relative_file"; then
           printf '配置模板 %s 已修改；不会覆盖自定义配置，请先核对差异。\n' "$relative_file" >&2
+          printf '待核对文件：%s\n已验证的新模板：%s\n' "$target_file" "$package_workspace/$relative_file" >&2
           exit 1
         fi
         ;;
@@ -307,7 +319,7 @@ refresh_public_files() (
     install -m 0644 -- "$package_workspace/$relative_file" "$temporary_target"
     mv -T -- "$temporary_target" "$target_file"
   done
-  printf '公共脚本已刷新：%s-%s。配置、密钥、备份与数据卷未替换。\n' "$package_version" "$package_revision"
+  printf '公共脚本已刷新：%s-%s。私有配置、密钥、备份与数据卷未替换。\n' "$package_version" "$package_revision"
 )
 
 case "$operation" in
