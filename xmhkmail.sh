@@ -12,7 +12,7 @@ install_arguments=()
 docker_installation_arguments=()
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    install | update | check | status | start | stop | backup | recovery | recover | uninstall | menu)
+    install | update | check | status | start | stop | backup | recovery | recover | cleanup-images | uninstall | menu)
       operation=$1
       shift
       ;;
@@ -37,7 +37,7 @@ while [ "$#" -gt 0 ]; do
       shift 2
       ;;
     --help | -h)
-      printf 'Usage: bash xmhkmail.sh [install|update|check|status|start|stop|backup|recovery|recover|uninstall]\n'
+      printf 'Usage: bash xmhkmail.sh [install|update|check|status|start|stop|backup|recovery|recover|cleanup-images|uninstall]\n'
       printf 'Options: --repository OWNER/REPOSITORY --directory PATH --yes --install-docker\n'
       printf 'Install asks before installing Docker on a host without it; --install-docker approves that for --yes.\n'
       printf 'Uninstall removes this deployment containers only; all data and keys remain.\n'
@@ -131,7 +131,7 @@ run_interactive_script() {
 }
 
 if [ "$operation" = menu ]; then
-  printf '\nxmhkmail\n1) 安装\n2) 更新\n3) 状态\n4) 启动\n5) 停止\n6) 备份\n7) 准备恢复包下载\n8) 恢复中断更新\n9) 卸载（保留数据）\n10) 检查更新\n0) 退出\n'
+  printf '\nxmhkmail\n1) 安装\n2) 更新\n3) 状态\n4) 启动\n5) 停止\n6) 备份\n7) 准备恢复包下载\n8) 恢复中断更新\n9) 卸载（保留数据）\n10) 检查更新\n11) 清理旧镜像（保留当前和上一版）\n0) 退出\n'
   read_terminal '选择：' selection
   case "$selection" in
     1) operation=install ;;
@@ -144,6 +144,7 @@ if [ "$operation" = menu ]; then
     8) operation=recover ;;
     9) operation=uninstall ;;
     10) operation=check ;;
+    11) operation=cleanup-images ;;
     0) exit 0 ;;
     *)
       printf '无效选择。\n' >&2
@@ -370,7 +371,7 @@ case "$operation" in
       check) bash "$deployment_directory/ops/update.sh" check ;;
     esac
     ;;
-  status | start | stop | backup | recovery | recover)
+  status | start | stop | backup | recovery | recover | cleanup-images)
     require_existing_deployment
     case "$operation" in
       status) bash "$deployment_directory/ops/update.sh" status ;;
@@ -385,6 +386,9 @@ case "$operation" in
         ;;
       recovery) bash "$deployment_directory/ops/recovery.sh" prepare ;;
       recover) run_interactive_script "$deployment_directory/ops/update.sh" recover "${confirmation_arguments[@]}" ;;
+      cleanup-images)
+        run_interactive_script "$deployment_directory/ops/update.sh" cleanup-images "${confirmation_arguments[@]}"
+        ;;
     esac
     ;;
   uninstall)
